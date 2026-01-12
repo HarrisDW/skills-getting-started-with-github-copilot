@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="participants-list">
               ${
                 details.participants && details.participants.length > 0
-                  ? `<ul>${details.participants.map(p => `<li>${escapeHtml(p)}</li>`).join("")}</ul>`
+                  ? `<ul>${details.participants.map(p => `<li class="participant-item"><span class="participant-email">${escapeHtml(p)}</span><button class="delete-btn" data-activity="${escapeHtml(name)}" data-email="${escapeHtml(p)}" title="Unregister participant">✖</button></li>`).join("")}</ul>`
                   : `<p class="muted">No participants yet.</p>`
               }
             </div>
@@ -86,6 +86,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities list so new participant appears immediately
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -102,6 +104,41 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+    }
+  });
+
+  // Delegate delete participant clicks from activities list
+  activitiesList.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!target.classList.contains("delete-btn")) return;
+
+    const activityName = target.dataset.activity;
+    const email = target.dataset.email;
+    if (!activityName || !email) return;
+
+    try {
+      const resp = await fetch(
+        `/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`,
+        { method: "POST" }
+      );
+
+      const result = await resp.json();
+
+      if (resp.ok) {
+        messageDiv.textContent = result.message;
+        messageDiv.className = "success";
+      } else {
+        messageDiv.textContent = result.detail || "Failed to unregister";
+        messageDiv.className = "error";
+      }
+
+      messageDiv.classList.remove("hidden");
+      setTimeout(() => messageDiv.classList.add("hidden"), 4000);
+
+      // Refresh activities list to reflect change
+      fetchActivities();
+    } catch (err) {
+      console.error("Error unregistering participant:", err);
     }
   });
 
